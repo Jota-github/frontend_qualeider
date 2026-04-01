@@ -1,7 +1,7 @@
 import { SelectHTMLAttributes } from "react";
 
 interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label: string;
+  label?: string; // <-- Adicionamos a interrogação aqui para tornar opcional
   error?: string;
   options: Array<{
     value: string;
@@ -20,7 +20,8 @@ export default function SelectField({
 }: SelectFieldProps) {
   return (
     <div className="space-y-1">
-      <label className="text-brand-primary font-medium text-sm">{label}</label>
+      {/* O React agora só vai desenhar o label se você passar um texto para ele */}
+      {label && <label className="text-brand-primary font-medium text-sm">{label}</label>}
       <select
         className={`w-full h-11 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm 
           focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent

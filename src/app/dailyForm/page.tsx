@@ -1,205 +1,117 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Save } from "lucide-react";
+import { Save, Syringe, Scale, CheckCircle2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout";
 import { PageHeader } from "@/components/dashboard";
-import { StickyTotalsBar } from "@/components/dailyForm";
-import { ErrorModal } from "@/components/ui";
-import DashboardLoading from "@/components/dashboard/DashboardLoading";
-import { MilkingPlace } from "@/interfaces/daily-collection";
-import { DailyCollectionData, dailyCollectionSchema } from "@/schemas/collection";
-import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { useDailyCollection } from "@/hooks/useDailyCollection";
-import { useUserAnimals } from "@/hooks/queries/useAnimals";
-import { useCreateCollection } from "@/hooks/queries/useCollections";
-import { getLocalDate, formatDateLongBR } from "@/utils/date";
-import { getFriendlyErrorMessage } from "@/utils/errorMessage";
-import AnimalCollectionCard from "./_components/AnimalCollectionCard";
-import { CollectionSummaryModal } from "./_components/CollectionSummaryModal";
+import { ErrorModal, SelectField } from "@/components/ui";
 
-export default function DailyForm() {
+export default function DailyFormDemo() {
   const router = useRouter();
-  const { userId, isLoading: isAuthLoading } = useAuthGuard("user");
-  const { validateCollectionItems, transformProductionMapToItems } = useDailyCollection();
-
-  const { data: animals = [], isLoading: isLoadingAnimals } = useUserAnimals(userId);
-  const createCollection = useCreateCollection();
-  
-  const [productionMap, setProductionMap] = useState<Record<number, string>>({});
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const [modalState, setModalState] = useState({
-    isOpen: false,
-    type: "success" as "success" | "error" | "info",
-    message: "",
-  });
+  // Animais simulados para a demonstração
+  const demoAnimals = [
+    { id: 1, name: "Estrela", brinco: "045" },
+    { id: 2, name: "Mimosa", brinco: "012" },
+  ];
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<DailyCollectionData>({
-    resolver: zodResolver(dailyCollectionSchema),
-    mode: "onBlur",
-    defaultValues: {
-      quantity: 0,
-      numAnimals: 0,
-      numOrdens: 0,
-      rationProvided: false,
-      numLactation: 0,
-      milkingPlace: MilkingPlace.Aberto,
-      technicalAssistance: false,
-      collectionDate: getLocalDate(),
-    },
-  });
-
-  const totals = useMemo(() => {
-
-    let totalMilk = 0;
-    let milkedCows = 0;
-
-    Object.values(productionMap).forEach((val) => {
-      const num = parseFloat(val);
-      if (!isNaN(num) && num > 0) {
-        totalMilk += num;
-        milkedCows++;
-      }
-    });
-
-    return { totalMilk, milkedCows };
-  }, [productionMap]);
-
-  useEffect(() => {
-    setValue("quantity", totals.totalMilk);
-    setValue("numAnimals", totals.milkedCows);
-  }, [totals, setValue]);
-
-  const handleProductionChange = (animalId: number, val: string) => {
-    setProductionMap((prev) => ({ ...prev, [animalId]: val }));
+  const handleDemoSubmit = () => {
+    setIsFinalizing(true);
+    setTimeout(() => {
+      setIsFinalizing(false);
+      setModalOpen(true);
+    }, 1000);
   };
-
-  const onFinalSubmit = async (data: DailyCollectionData) => {
-    if (!userId) return;
-
-    try {
-      const items = transformProductionMapToItems(productionMap);
-      const validation = validateCollectionItems(items);
-
-      if (!validation.isValid) {
-        setModalState({
-          isOpen: true,
-          type: "error",
-          message: validation.errors[0].message,
-        });
-        setIsFinalizing(false);
-        return;
-      }
-
-      const payload = { ...data, items };
-
-      await createCollection.mutateAsync({ data: payload, userId });
-
-      setModalState({
-        isOpen: true,
-        type: "success",
-        message: "Coleta registrada com sucesso!",
-      });
-    } catch (err) {
-      console.error(err);
-      setModalState({
-        isOpen: true,
-        type: "error",
-        message: getFriendlyErrorMessage(err),
-      });
-    }
-  };
-
-  const [displayDate, setDisplayDate] = useState<string>("");
-
-  useEffect(() => {
-    setDisplayDate(formatDateLongBR(new Date()));
-  }, []);
-
-  if (isAuthLoading || isLoadingAnimals) {
-    return <DashboardLoading />;
-  }
 
   return (
     <>
       <DashboardLayout>
         <PageHeader
-          title="Registrar Coleta Diária"
-          subtitle="Informe os dados da coleta de hoje"
-        />
-        
-        <StickyTotalsBar
-          totalMilk={totals.totalMilk}
-          milkedCows={totals.milkedCows}
-          totalAnimals={animals.length}
+          title="Registro Diário de Ordenha e Sanidade"
+          subtitle="Informe a pesagem em Kg e os testes de mastite"
         />
 
-      <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
+      <div className="flex-1 overflow-y-auto pb-24 p-4 space-y-6 max-w-4xl mx-auto">
         
-        {/* Animal List */}
-        <div className="p-4 space-y-4 max-w-2xl mx-auto">
-          {animals.length === 0 ? (
-            <div className="text-center text-slate-500 py-10">
-              Nenhum animal cadastrado. Adicione animais para registrar a coleta.
+        {demoAnimals.map((animal) => (
+          <div key={animal.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            {/* Cabeçalho do Card */}
+            <div className="bg-[#1e3a29] text-white p-3 flex justify-between items-center">
+                <span className="font-bold text-lg">{animal.name}</span>
+                <span className="bg-white text-[#1e3a29] px-2 py-1 rounded text-xs font-bold">Nº {animal.brinco}</span>
             </div>
-          ) : (
-            animals.map((animal) => (
-              <AnimalCollectionCard
-                key={animal.id}
-                animal={animal}
-                value={productionMap[animal.id] || ""}
-                onChange={(val) => handleProductionChange(animal.id, val)}
-                disabled={isSubmitting}
-              />
-            ))
-          )}
-        </div>
 
-        {/* Floating Save Button */}
-        <div className="fixed bottom-6 left-0 w-full px-4 z-30 lg:left-64 lg:w-[calc(100%-16rem)] flex justify-center pointer-events-none">
+            <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Pesagem */}
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 font-bold text-slate-700 text-sm">
+                        <Scale size={16} className="text-[#d97706]" /> Pesagem (Kg)
+                    </label>
+                    <input 
+                        type="number" 
+                        placeholder="0.0" 
+                        className="w-full border border-slate-300 rounded-lg p-3 text-lg focus:ring-2 focus:ring-[#d97706] focus:outline-none"
+                    />
+                </div>
+
+                {/* Teste da Caneca */}
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 font-bold text-slate-700 text-sm">
+                        <CheckCircle2 size={16} className="text-green-600" /> Caneca (Fundo Escuro)
+                    </label>
+                    <SelectField 
+                        options={[
+                            { value: "normal", label: "Normal (Sem Grumos)" },
+                            { value: "grumos", label: "Grumos (Mastite Clínica)" }
+                        ]}
+                    />
+                </div>
+
+                {/* Teste CMT */}
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 font-bold text-slate-700 text-sm">
+                        <Syringe size={16} className="text-purple-600" /> Teste CMT
+                    </label>
+                    <SelectField 
+                        options={[
+                            { value: "negativo", label: "Negativo" },
+                            { value: "tracos", label: "Traços (+/-)" },
+                            { value: "grau1", label: "Grau 1 (+)" },
+                            { value: "grau2", label: "Grau 2 (++)" },
+                            { value: "grau3", label: "Grau 3 (+++)" }
+                        ]}
+                    />
+                </div>
+
+            </div>
+          </div>
+        ))}
+
+        {/* Botão Salvar */}
+        <div className="pt-6 flex justify-center">
           <button
-            type="button"
-            onClick={() => setIsFinalizing(true)}
-            className="w-full max-w-md bg-[#d97706] hover:bg-[#b45309] text-white p-4 rounded-xl shadow-xl font-bold text-lg flex justify-center items-center gap-2 transform active:scale-95 transition-all pointer-events-auto"
-            aria-label="Finalizar e salvar coleta"
+            onClick={handleDemoSubmit}
+            disabled={isFinalizing}
+            className="w-full max-w-md bg-[#d97706] hover:bg-[#b45309] text-white p-4 rounded-xl shadow-lg font-bold text-lg flex justify-center items-center gap-2 transition-all"
           >
             <Save className="w-6 h-6" />
-            Finalizar Coleta
+            {isFinalizing ? "Salvando Registros..." : "Finalizar Coleta Diária"}
           </button>
         </div>
       </div>
-
-      <CollectionSummaryModal
-        isOpen={isFinalizing}
-        onClose={() => setIsFinalizing(false)}
-        onSubmit={handleSubmit(onFinalSubmit)}
-        totals={totals}
-        register={register}
-        errors={errors}
-        isSubmitting={isSubmitting}
-      />
     </DashboardLayout>
 
     <ErrorModal
-      isOpen={modalState.isOpen}
-      onClose={() => {
-        setModalState(prev => ({ ...prev, isOpen: false }));
-        if (modalState.type === "success") {
-          router.push("/dashboardUser");
-        }
-      }}
-      title={modalState.type === "success" ? "Sucesso!" : "Atenção"}
-      message={modalState.message}
-      type={modalState.type}
+      isOpen={modalOpen}
+      onClose={() => router.push("/dashboardUser")}
+      title="Sucesso!"
+      message="Pesagem e controles sanitários registrados no sistema."
+      type="success"
     />
     </>
   );
